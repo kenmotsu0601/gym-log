@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Gym Log" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icon-180.png" />
+  <title>Gym Log</title>
+  <style>
+    :root {
+      --bg:#f5f6f8; --card:#fff; --text:#111827; --muted:#6b7280;
+      --line:#e5e7eb; --accent:#111827; --done:#0f766e; --danger:#b91c1c;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;background:var(--bg);color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      -webkit-font-smoothing:antialiased;
+    }
+    .app{max-width:720px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 16px) 14px calc(env(safe-area-inset-bottom) + 90px)}
+    .topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
+    h1{font-size:28px;line-height:1.1;margin:0 0 4px;font-weight:800}
+    .date{font-size:14px;color:var(--muted)}
+    button,input,select{font:inherit}
+    button{touch-action:manipulation}
+    .ghost{
+      border:1px solid var(--line);background:#fff;border-radius:12px;padding:9px 12px;color:var(--text)
+    }
+    .timer{
+      position:sticky;top:calc(env(safe-area-inset-top) + 8px);z-index:10;
+      background:var(--accent);color:#fff;border-radius:16px;padding:14px 16px;margin:0 0 14px;
+      display:flex;justify-content:space-between;align-items:center;gap:12px;
+      box-shadow:0 8px 24px rgba(0,0,0,.14)
+    }
+    .timer.hidden{display:none}
+    .timer .label{font-size:12px;opacity:.72}
+    .timer .time{font-size:30px;font-variant-numeric:tabular-nums;font-weight:800}
+    .timer .meta{font-size:12px;opacity:.8;margin-top:2px}
+    .timer button{border:0;background:#fff;color:#111827;border-radius:10px;padding:8px 10px}
+    .summary{
+      display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px
+    }
+    .summary .box{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px}
+    .summary .v{font-size:20px;font-weight:800}
+    .summary .k{font-size:11px;color:var(--muted);margin-top:2px}
+    .card{
+      background:var(--card);border:1px solid var(--line);border-radius:16px;
+      padding:14px;margin-bottom:10px
+    }
+    .card.done{border-color:#99d5cd;background:#f2fbf9}
+    .head{display:flex;justify-content:space-between;gap:10px;align-items:center}
+    .name{font-size:17px;font-weight:750}
+    .sub{font-size:12px;color:var(--muted);margin-top:3px}
+    .badge{font-size:12px;padding:5px 8px;border-radius:999px;background:#f3f4f6;color:#374151;white-space:nowrap}
+    .card.done .badge{background:#d9f3ef;color:#115e59}
+    .fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+    .field label{display:block;font-size:11px;color:var(--muted);margin:0 0 4px 2px}
+    .field input{
+      width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 12px;
+      background:#fff;min-height:44px
+    }
+    .sets{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+    .sets.two{grid-template-columns:repeat(2,1fr)}
+    .setbtn{
+      border:1px solid var(--line);background:#fff;border-radius:12px;padding:11px 6px;
+      min-height:46px;font-weight:700
+    }
+    .setbtn.completed{background:var(--done);border-color:var(--done);color:#fff}
+    .card-actions{display:flex;justify-content:flex-end;margin-top:10px}
+    .tiny{border:0;background:transparent;color:var(--muted);padding:4px 0;font-size:12px}
+    .running .fields{grid-template-columns:1fr 1fr}
+    .runbtn{
+      width:100%;border:0;background:var(--accent);color:#fff;border-radius:12px;padding:12px;
+      font-weight:800;margin-top:10px
+    }
+    .nav{
+      position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.94);
+      backdrop-filter:blur(14px);border-top:1px solid var(--line);
+      padding:8px 14px calc(env(safe-area-inset-bottom) + 8px);
+      display:flex;gap:8px;justify-content:center
+    }
+    .nav button{flex:1;max-width:340px;border:0;background:transparent;border-radius:12px;padding:11px;font-weight:700;color:var(--muted)}
+    .nav button.active{background:#111827;color:#fff}
+    .panel{display:none}.panel.active{display:block}
+    .history-date{font-size:13px;color:var(--muted);margin:18px 2px 7px}
+    .history-item{background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:7px}
+    .history-item strong{display:block}
+    .history-item small{color:var(--muted)}
+    .empty{color:var(--muted);text-align:center;padding:36px 20px}
+    .settings{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+    .settings h2{font-size:17px;margin:0 0 10px}
+    .setting-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+    .setting-row:first-of-type{border-top:0}
+    .setting-row select{border:1px solid var(--line);border-radius:10px;padding:8px;background:#fff}
+    .danger{color:var(--danger)}
+    .note{font-size:12px;color:var(--muted);line-height:1.5}
+  </style>
+</head>
+<body>
+<div class="app">
+  <section id="todayPanel" class="panel active">
+    <div class="topbar">
+      <div>
+        <h1>Gym Log</h1>
+        <div id="todayDate" class="date"></div>
+      </div>
+      <button class="ghost" id="wakeBtn">画面を保持</button>
+    </div>
+
+    <div id="timerBox" class="timer hidden">
+      <div>
+        <div class="label">インターバル</div>
+        <div id="timerTime" class="time">02:00</div>
+        <div id="timerMeta" class="meta"></div>
+      </div>
+      <button id="timerCancel">終了</button>
+    </div>
+
+    <div class="summary">
+      <div class="box"><div id="sumSets" class="v">0/26</div><div class="k">完了セット</div></div>
+      <div class="box"><div id="sumExercises" class="v">0/10</div><div class="k">完了種目</div></div>
+      <div class="box"><div id="sumRun" class="v">—</div><div class="k">ランニング</div></div>
+    </div>
+
+    <div id="exerciseList"></div>
+
+    <div class="card running" id="runningCard">
+      <div class="head">
+        <div>
+          <div class="name">ランニング</div>
+          <div class="sub">目安 20〜30分</div>
+        </div>
+        <div id="runBadge" class="badge">未実施</div>
+      </div>
+      <div class="fields">
+        <div class="field">
+          <label>時間（分）</label>
+          <input id="runMinutes" type="number" inputmode="numeric" min="0" step="1" placeholder="25">
+        </div>
+        <div class="field">
+          <label>距離（km・任意）</label>
+          <input id="runDistance" type="number" inputmode="decimal" min="0" step="0.1" placeholder="3.0">
+        </div>
+      </div>
+      <button id="runDone" class="runbtn">ランニングを記録</button>
+    </div>
+  </section>
+
+  <section id="historyPanel" class="panel">
+    <div class="topbar"><div><h1>履歴</h1><div class="date">端末内にのみ保存</div></div></div>
+    <div id="historyList"></div>
+  </section>
+
+  <section id="settingsPanel" class="panel">
+    <div class="topbar"><div><h1>設定</h1><div class="date">休憩時間とデータ管理</div></div></div>
+    <div class="settings">
+      <h2>インターバル</h2>
+      <div class="setting-row">
+        <span>主要種目</span>
+        <select id="compoundRest">
+          <option value="60">60秒</option><option value="90">90秒</option>
+          <option value="120">120秒</option><option value="180">180秒</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <span>補助種目</span>
+        <select id="accessoryRest">
+          <option value="60">60秒</option><option value="90">90秒</option>
+          <option value="120">120秒</option><option value="180">180秒</option>
+        </select>
+      </div>
+    </div>
+    <div class="settings">
+      <h2>データ</h2>
+      <div class="setting-row">
+        <button id="exportBtn" class="ghost">JSONを書き出す</button>
+      </div>
+      <div class="setting-row">
+        <button id="clearBtn" class="ghost danger">全履歴を削除</button>
+      </div>
+      <p class="note">記録はブラウザのローカルストレージに保存されます。Safariのサイトデータを消去すると履歴も消えます。</p>
+    </div>
+  </section>
+</div>
+
+<nav class="nav">
+  <button data-target="todayPanel" class="active">今日</button>
+  <button data-target="historyPanel">履歴</button>
+  <button data-target="settingsPanel">設定</button>
+</nav>
+
+<script>
+const EXERCISES = [
+  {id:"leg_press", name:"レッグプレス", sets:3, type:"compound"},
+  {id:"leg_curl", name:"レッグカール", sets:3, type:"compound"},
+  {id:"chest_press", name:"コンバージングチェストプレス", sets:3, type:"compound"},
+  {id:"lat_pulldown", name:"ダイバージングラットプルダウン", sets:3, type:"compound"},
+  {id:"seated_row", name:"ダイバージングシーテッドロー", sets:3, type:"compound"},
+  {id:"shoulder_press", name:"ショルダープレス", sets:3, type:"compound"},
+  {id:"rear_delt", name:"リアデルト", sets:2, type:"accessory"},
+  {id:"outer_thigh", name:"アウターサイ", sets:2, type:"accessory"},
+  {id:"abdominal", name:"アブドミナル", sets:2, type:"accessory"},
+  {id:"dumbbell_curl", name:"ダンベルカール", sets:2, type:"accessory"}
+];
+
+const KEY = "gymLogDataV1";
+const SETTINGS_KEY = "gymLogSettingsV1";
+const TIMER_KEY = "gymLogTimerV1";
+
+function todayKey(){
+  const d = new Date();
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+function formatDate(key){
+  const [y,m,d]=key.split("-").map(Number);
+  return new Intl.DateTimeFormat("ja-JP",{year:"numeric",month:"long",day:"numeric",weekday:"short"}).format(new Date(y,m-1,d));
+}
+function loadData(){ try{return JSON.parse(localStorage.getItem(KEY))||{days:{}}}catch{return {days:{}}} }
+function saveData(data){ localStorage.setItem(KEY, JSON.stringify(data)); }
+function loadSettings(){
+  try{return {...{compoundRest:120,accessoryRest:90}, ...(JSON.parse(localStorage.getItem(SETTINGS_KEY))||{})}}
+  catch{return {compoundRest:120,accessoryRest:90}}
+}
+function saveSettings(s){ localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
+
+function ensureToday(data){
+  const k=todayKey();
+  if(!data.days[k]) data.days[k]={exercises:{}, running:null};
+  EXERCISES.forEach(e=>{
+    if(!data.days[k].exercises[e.id]){
+      data.days[k].exercises[e.id]={sets:Array.from({length:e.sets},()=>({done:false,reps:"",weight:""}))};
+    }
+    const arr=data.days[k].exercises[e.id].sets;
+    while(arr.length<e.sets) arr.push({done:false,reps:"",weight:""});
+    if(arr.length>e.sets) arr.length=e.sets;
+  });
+  return data.days[k];
+}
+
+function getPreviousExercise(data, id){
+  const keys=Object.keys(data.days).sort().reverse();
+  const today=todayKey();
+  for(const k of keys){
+    if(k===today) continue;
+    const ex=data.days[k]?.exercises?.[id];
+    if(ex?.sets?.some(s=>s.done)){
+      const first=ex.sets.find(s=>s.done && (s.weight!=="" || s.reps!==""));
+      if(first) return {date:k, ...first};
+      return {date:k, weight:"", reps:""};
+    }
+  }
+  return null;
+}
+
+function render(){
+  const data=loadData();
+  const day=ensureToday(data);
+  saveData(data);
+  document.getElementById("todayDate").textContent=formatDate(todayKey());
+  const list=document.getElementById("exerciseList");
+  list.innerHTML="";
+
+  let totalSets=0, doneSets=0, doneExercises=0;
+  EXERCISES.forEach(e=>{
+    totalSets += e.sets;
+    const ex=day.exercises[e.id];
+    const completed=ex.sets.filter(s=>s.done).length;
+    doneSets += completed;
+    if(completed===e.sets) doneExercises++;
+
+    const prev=getPreviousExercise(data,e.id);
+    const prevText=prev ? `前回 ${prev.weight!==""?prev.weight+" kg":"—"} / ${prev.reps!==""?prev.reps+"回":"—"}` : "前回記録なし";
+
+    const card=document.createElement("div");
+    card.className="card"+(completed===e.sets?" done":"");
+    card.innerHTML=`
+      <div class="head">
+        <div><div class="name">${e.name}</div><div class="sub">${prevText}</div></div>
+        <div class="badge">${completed}/${e.sets}セット</div>
+      </div>
+      <div class="fields">
+        <div class="field"><label>重量（kg）</label><input type="number" inputmode="decimal" step="0.5" data-role="weight" placeholder="前回 ${prev?.weight || "—"}"></div>
+        <div class="field"><label>回数</label><input type="number" inputmode="numeric" step="1" data-role="reps" placeholder="例 10"></div>
+      </div>
+      <div class="sets ${e.sets===2?"two":""}">
+        ${ex.sets.map((s,i)=>`<button class="setbtn ${s.done?"completed":""}" data-set="${i}">${s.done?`✓ ${i+1}`:`${i+1}セット目`}</button>`).join("")}
+      </div>
+      <div class="card-actions"><button class="tiny" data-role="undo">この種目の最後のチェックを戻す</button></div>
+    `;
+
+    const weightInput=card.querySelector('[data-role="weight"]');
+    const repsInput=card.querySelector('[data-role="reps"]');
+    const lastDone=[...ex.sets].reverse().find(s=>s.done && (s.weight!=="" || s.reps!==""));
+    if(lastDone){ weightInput.value=lastDone.weight; repsInput.value=lastDone.reps; }
+    else if(prev){ weightInput.value=prev.weight || ""; repsInput.value=prev.reps || ""; }
+
+    card.querySelectorAll(".setbtn").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        const idx=Number(btn.dataset.set);
+        const d=loadData(); ensureToday(d);
+        const target=d.days[todayKey()].exercises[e.id].sets[idx];
+        if(target.done){
+          target.done=false;
+        }else{
+          target.done=true;
+          target.weight=weightInput.value;
+          target.reps=repsInput.value;
+          target.completedAt=Date.now();
+          if(idx < e.sets-1) startTimer(e);
+        }
+        saveData(d); render();
+      });
+    });
+
+    card.querySelector('[data-role="undo"]').addEventListener("click",()=>{
+      const d=loadData(); ensureToday(d);
+      const arr=d.days[todayKey()].exercises[e.id].sets;
+      for(let i=arr.length-1;i>=0;i--){
+        if(arr[i].done){ arr[i].done=false; break; }
+      }
+      saveData(d); render();
+    });
+
+    list.appendChild(card);
+  });
+
+  document.getElementById("sumSets").textContent=`${doneSets}/${totalSets}`;
+  document.getElementById("sumExercises").textContent=`${doneExercises}/${EXERCISES.length}`;
+
+  const run=day.running;
+  document.getElementById("runMinutes").value=run?.minutes ?? "";
+  document.getElementById("runDistance").value=run?.distance ?? "";
+  const rb=document.getElementById("runBadge");
+  rb.textContent=run ? `${run.minutes}分` : "未実施";
+  document.getElementById("sumRun").textContent=run ? `${run.minutes}分` : "—";
+  document.getElementById("runningCard").classList.toggle("done",!!run);
+
+  renderHistory();
+}
+
+function startTimer(exercise){
+  const s=loadSettings();
+  const seconds=exercise.type==="compound"?Number(s.compoundRest):Number(s.accessoryRest);
+  const timer={end:Date.now()+seconds*1000, seconds, exerciseName:exercise.name};
+  localStorage.setItem(TIMER_KEY, JSON.stringify(timer));
+  updateTimer();
+}
+function updateTimer(){
+  let timer=null;
+  try{timer=JSON.parse(localStorage.getItem(TIMER_KEY))}catch{}
+  const box=document.getElementById("timerBox");
+  if(!timer){box.classList.add("hidden");return}
+  const remain=Math.max(0, Math.ceil((timer.end-Date.now())/1000));
+  if(remain<=0){
+    document.getElementById("timerTime").textContent="00:00";
+    document.getElementById("timerMeta").textContent=`${timer.exerciseName}：休憩終了`;
+    box.classList.remove("hidden");
+    return;
+  }
+  const mm=String(Math.floor(remain/60)).padStart(2,"0");
+  const ss=String(remain%60).padStart(2,"0");
+  document.getElementById("timerTime").textContent=`${mm}:${ss}`;
+  document.getElementById("timerMeta").textContent=timer.exerciseName;
+  box.classList.remove("hidden");
+}
+
+document.getElementById("timerCancel").addEventListener("click",()=>{
+  localStorage.removeItem(TIMER_KEY); updateTimer();
+});
+
+document.getElementById("runDone").addEventListener("click",()=>{
+  const minutes=document.getElementById("runMinutes").value;
+  if(minutes==="") return;
+  const d=loadData(); ensureToday(d);
+  d.days[todayKey()].running={
+    minutes:Number(minutes),
+    distance:document.getElementById("runDistance").value===""?"":Number(document.getElementById("runDistance").value),
+    completedAt:Date.now()
+  };
+  saveData(d); render();
+});
+
+function renderHistory(){
+  const d=loadData();
+  const keys=Object.keys(d.days).sort().reverse();
+  const wrap=document.getElementById("historyList");
+  wrap.innerHTML="";
+  let any=false;
+  keys.forEach(k=>{
+    const day=d.days[k];
+    const completed=EXERCISES.filter(e=>day.exercises?.[e.id]?.sets?.every(s=>s.done)).length;
+    const setCount=EXERCISES.reduce((n,e)=>n+(day.exercises?.[e.id]?.sets?.filter(s=>s.done).length||0),0);
+    if(setCount===0 && !day.running) return;
+    any=true;
+    const title=document.createElement("div");
+    title.className="history-date";
+    title.textContent=formatDate(k);
+    wrap.appendChild(title);
+
+    EXERCISES.forEach(e=>{
+      const ex=day.exercises?.[e.id];
+      if(!ex?.sets?.some(s=>s.done)) return;
+      const done=ex.sets.filter(s=>s.done);
+      const details=done.map((s,i)=>`${i+1}: ${s.weight!==""?s.weight+"kg":"—"} × ${s.reps!==""?s.reps+"回":"—"}`).join(" / ");
+      const item=document.createElement("div");
+      item.className="history-item";
+      item.innerHTML=`<strong>${e.name}</strong><small>${details}</small>`;
+      wrap.appendChild(item);
+    });
+    if(day.running){
+      const item=document.createElement("div");
+      item.className="history-item";
+      item.innerHTML=`<strong>ランニング</strong><small>${day.running.minutes}分${day.running.distance!==""?` / ${day.running.distance}km`:""}</small>`;
+      wrap.appendChild(item);
+    }
+  });
+  if(!any) wrap.innerHTML='<div class="empty">まだ履歴がありません。</div>';
+}
+
+document.querySelectorAll(".nav button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active");
+    document.getElementById(b.dataset.target).classList.add("active");
+    if(b.dataset.target==="historyPanel") renderHistory();
+  })
+});
+
+const settings=loadSettings();
+document.getElementById("compoundRest").value=String(settings.compoundRest);
+document.getElementById("accessoryRest").value=String(settings.accessoryRest);
+["compoundRest","accessoryRest"].forEach(id=>{
+  document.getElementById(id).addEventListener("change",()=>{
+    const s=loadSettings();
+    s[id]=Number(document.getElementById(id).value);
+    saveSettings(s);
+  });
+});
+
+document.getElementById("exportBtn").addEventListener("click",()=>{
+  const payload={data:loadData(),settings:loadSettings(),exportedAt:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url; a.download=`gym-log-${todayKey()}.json`; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+});
+
+document.getElementById("clearBtn").addEventListener("click",()=>{
+  if(confirm("全てのトレーニング履歴を削除しますか？")){
+    localStorage.removeItem(KEY); localStorage.removeItem(TIMER_KEY); render();
+  }
+});
+
+let wakeLock=null;
+document.getElementById("wakeBtn").addEventListener("click",async()=>{
+  const btn=document.getElementById("wakeBtn");
+  try{
+    if(wakeLock){ await wakeLock.release(); wakeLock=null; btn.textContent="画面を保持"; return; }
+    if("wakeLock" in navigator){
+      wakeLock=await navigator.wakeLock.request("screen");
+      btn.textContent="保持中";
+      wakeLock.addEventListener("release",()=>{wakeLock=null;btn.textContent="画面を保持"});
+    }else{
+      btn.textContent="非対応";
+    }
+  }catch{
+    btn.textContent="利用不可";
+  }
+});
+
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible") updateTimer();
+});
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+}
+
+render();
+updateTimer();
+setInterval(updateTimer,500);
+</script>
+</body>
+</html>
